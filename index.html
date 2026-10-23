@@ -15,6 +15,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossorigin="anonymous">
 <link rel="stylesheet" href="style.css">
+<script>document.documentElement.classList.add("js")</script>
 </head>
 <body>
 
@@ -30,12 +31,13 @@
       <a href="#bibtex">BibTeX</a>
     </div>
   </div>
+  <span class="progress" id="progress" aria-hidden="true"></span>
 </nav>
 
 <header class="head">
   <div class="wrap">
     <p class="venue">NeurIPS 2026</p>
-    <h1>Not All Tokens Should Be Treated Equally:<br>Context Credits Reassignment</h1>
+    <h1>Not All <span class="hl">Tokens</span> Should Be Treated Equally:<br>Context Credits Reassignment</h1>
 
     <p class="authors">
       <span>Shujian Gao<sup>1,2*</sup></span>
@@ -82,14 +84,14 @@
 <!-- Teaser -->
 <section class="teaser">
   <div class="wrap wide">
-    <figure>
+    <figure class="rv">
       <div class="frame"><img src="assets/fig2.webp" alt="Overview of HiCCR: an attention hook on the policy model produces a per-token context credit, which is turned into token-level and trajectory-level weights that reassign the advantage of positive rollouts." ></div>
       <figcaption><b>Overview of HiCCR.</b> An attention hook on the policy model scores how concentrated each generated token's attention is within the image. The score yields a token-level weight β<sub>t</sub> and a trajectory-level weight α<sup>(i)</sup>, which reassign the outcome advantage of correct rollouts: Ã<sub>t</sub><sup>(i)</sup> = α<sup>(i)</sup>β<sub>t</sub>Â<sup>(i)</sup>.</figcaption>
     </figure>
 
-    <ul class="highlights">
-      <li><b>+7.99</b> AVG@8 over GRPO on Qwen3-VL-4B</li>
-      <li><b>72.76%</b> AVG@8 with Qwen3-VL-8B, above GPT-4o and Qwen2.5-VL-72B</li>
+    <ul class="highlights rv">
+      <li><b data-count="7.99" data-pre="+">+7.99</b> AVG@8 over GRPO on Qwen3-VL-4B</li>
+      <li><b data-count="72.76" data-suf="%">72.76%</b> AVG@8 with Qwen3-VL-8B, above GPT-4o and Qwen2.5-VL-72B</li>
       <li><b>&lt;3%</b> extra wall-clock time; no auxiliary model or extra data</li>
     </ul>
   </div>
@@ -108,19 +110,19 @@
   <div class="wrap">
     <h2>Motivation</h2>
     <p>GRPO and DAPO broadcast one trajectory-level advantage Â to every token, whether the token reads a clock hand from the image or merely writes “Therefore”. Two observations suggest this is a poor default.</p>
-    <ol class="findings">
+    <ol class="findings rv">
       <li><b>Uniform credit is suboptimal.</b> Multiplying each token's advantage by uninformative noise w<sub>t</sub> ∼ 𝒩(1, 0.2²) already outperforms uniform credit in all four settings (GRPO/DAPO × Qwen3-VL-4B/8B), e.g., 68.29 → 71.40 AVG@8 for DAPO on 8B.</li>
       <li><b>Uniform credit weakens visual grounding.</b> Compared with the base model, RLVR-tuned models attend less to the image, assign a smaller share of gradient attribution to image tokens, and lose less accuracy when image embeddings are zeroed out.</li>
     </ol>
   </div>
   <div class="wrap wide">
-    <figure>
+    <figure class="rv">
       <div class="frame"><img src="assets/fig1.webp" alt="Figure 1: image attention mass over generation, normalized gradient share, and zero-embedding ablation for Base, GRPO, DAPO, HiCCR-G and HiCCR-D." loading="lazy"></div>
       <figcaption><b>Figure 1.</b> RLVR fine-tuning weakens visual grounding, and HiCCR mitigates it. (a) Attention mass on image tokens over generation. (b) Normalized Input×Gradient share of each context component. (c) Accuracy drop when image embeddings are zeroed out; a larger drop indicates stronger reliance on vision.</figcaption>
     </figure>
   </div>
   <div class="wrap">
-    <div class="note">
+    <div class="note rv">
       <p class="note-k">Theoretical explanation (Appendix B)</p>
       <p>Pretrained MLLMs exhibit <em>language-prior dominance</em>: non-visual context carries larger downstream-projected activations than visual context (κ<sub>emp</sub> &gt; 1, verified on Qwen3-VL and InternVL3). Under this condition, a uniform positive advantage gives text-side tokens a larger share of the gradient on W<sub>Q</sub>, and the visual attention mass changes to first order as</p>
       <div class="eq" data-tex="\Delta\alpha^{V}_t = -\eta\hat A\,D_t + \eta\hat A\,R_t + O(\|\Delta W_Q\|^2),"></div>
@@ -136,7 +138,7 @@
     <p>HiCCR derives every weight from a single quantity, the <b>context credit</b> C<sub>V</sub>(t): one minus the normalized entropy of token t's attention restricted to the visual positions 𝒱, averaged over heads of the last two layers. A token that locks onto a few image regions scores high; a token whose visual attention is diffuse scores low.</p>
     <div class="eq" data-tex="C_V(t)=1-\frac{H\!\left(p_V(\cdot\mid t)\right)}{\log|\mathcal V|}\in[0,1]"></div>
 
-    <div class="cols">
+    <div class="cols rv">
       <div>
         <h3>Token Credit Reassignment (TCR)</h3>
         <p>Within each sequence, scores are standardized and passed through a sigmoid, giving a smooth and bounded multiplier. No token is masked out.</p>
@@ -161,7 +163,7 @@
     <h2>Main Results</h2>
     <p>We train on ViRL39K and compare against nine RLVR algorithms reproduced under identical settings. Accuracy is averaged over eight runs (AVG@8) on nine reasoning benchmarks: five mathematical (Geometry3K, MathVerse, MathVista, WeMath, MathVerse-Vision) and four general/logical (MMK12, CLEVR-Count, LogicVista, MMMU).</p>
 
-    <div class="tbl">
+    <div class="tbl rv">
       <table>
         <caption><b>Table 1.</b> AVG@8 (%) on Qwen3-VL-4B and 8B. Math and General are sub-averages; Overall is the mean over all nine benchmarks. Best per column in bold. Green numbers are gains over the matched base algorithm. Per-benchmark scores are in the paper.</caption>
         <thead>
@@ -187,7 +189,7 @@
       </table>
     </div>
 
-    <ul class="bullets">
+    <ul class="bullets rv">
       <li><b>Consistent gains.</b> HiCCR improves its base algorithm in all four matched settings: +7.99 / +1.37 on 4B and +4.70 / +4.47 on 8B (GRPO / DAPO).</li>
       <li><b>Comparison with larger models.</b> HiCCR-D on Qwen3-VL-8B (72.76) surpasses Qwen2.5-VL-72B (61.65), InternVL2.5-78B (55.26), GPT-4o (60.95) and Gemini-2.0-flash (61.40) on the same benchmarks (Table 7 in the paper).</li>
       <li><b>Generalization.</b> Gains carry over to InternVL3-8B (+3.21 / +3.23), to training on Geometry3K only (+2.7 to +3.2), and to perception and hallucination benchmarks never used for training (MMStar 72.2%, HallusionBench 62.7%).</li>
@@ -203,7 +205,7 @@
 
     <h3>Which credit signal matters?</h3>
     <p>We keep the training recipe fixed and only change how token-level credit is assigned. Random and heuristic weightings give small gains; applying the same formula to text context or using unnormalized attention energy is clearly worse. Concentration <em>within the visual tokens</em> is the signal that matters.</p>
-    <div class="tbl">
+    <div class="tbl rv">
       <table>
         <caption><b>Table 2.</b> AVG@8 (%) of token-level credit strategies under GRPO and DAPO.</caption>
         <thead>
@@ -227,14 +229,67 @@
     <p>HiCCR receives no token-level supervision, yet the highest credit lands on tokens that refer to visual content (e.g., <i>triangle</i>, <i>angle</i>, <i>diagram</i>). Visually grounded tokens receive significantly more credit than other tokens (median β 1.303 vs. 1.236, Cohen's d = 0.547, p &lt; 0.001).</p>
   </div>
   <div class="wrap wide">
-    <figure>
+    <figure class="rv">
       <div class="frame"><img src="assets/fig4.webp" alt="Figure 4: context credit analysis on Qwen3-VL-8B: beta and alpha distributions, word cloud of high-credit tokens, credit versus position, and visual versus non-visual tokens." loading="lazy"></div>
       <figcaption><b>Figure 4.</b> Context credit analysis on Qwen3-VL-8B. (a) Distribution of β<sub>t</sub>. (b) Distribution of α<sup>(i)</sup>. (c) Tokens with the highest credit. (d) Credit over token position. (e) Visual vs. non-visual tokens.</figcaption>
     </figure>
-    <figure>
-      <div class="frame"><img src="assets/case1.webp" alt="Case study: token-level credit on a clock-reading question." loading="lazy"></div>
-      <figcaption><b>Case study.</b> Token-level credit on a clock-reading question (Qwen3-VL-8B). Red: high credit, tokens that read the image (hand positions, labels). Blue: low credit, tokens that compute or connect. More cases are in the appendix.</figcaption>
-    </figure>
+<div class="lens rv" id="lens">
+      <div class="lens-top">
+        <div>
+          <p class="lens-k">Credit lens</p>
+          <p class="lens-t">A real rollout from Qwen3-VL-8B, colored by context credit β<sub>t</sub></p>
+        </div>
+        <div class="seg" role="group" aria-label="Credit view">
+          <button type="button" data-mode="uniform" aria-pressed="false">Uniform RLVR</button>
+          <button type="button" data-mode="hiccr" aria-pressed="true">HiCCR β<sub>t</sub></button>
+        </div>
+      </div>
+
+      <div class="lens-q">
+        <div class="clocks" aria-hidden="true">
+          <div class="clock" data-h="210"><svg viewBox="0 0 80 80"><rect x="3" y="3" width="74" height="74" rx="16" class="cf"/><circle cx="40" cy="40" r="29" class="cd"/><g class="ticks"></g><line class="hh" x1="40" y1="40" x2="40" y2="23"/><line class="mh" x1="40" y1="40" x2="40" y2="15"/><circle cx="40" cy="40" r="2.6" class="cc"/></svg><span>watched a movie</span></div>
+          <div class="clock" data-h="270"><svg viewBox="0 0 80 80"><rect x="3" y="3" width="74" height="74" rx="16" class="cf"/><circle cx="40" cy="40" r="29" class="cd"/><g class="ticks"></g><line class="hh" x1="40" y1="40" x2="40" y2="23"/><line class="mh" x1="40" y1="40" x2="40" y2="15"/><circle cx="40" cy="40" r="2.6" class="cc"/></svg><span>ate dinner</span></div>
+        </div>
+        <div class="qa">
+          <p class="q"><b>Q.</b> The clocks show two things Lily did Tuesday evening. Which did Lily do earlier?<br><span class="muted">(A) ate dinner &nbsp; (B) watched a movie</span></p>
+          <p class="pred"><span>Ground truth <b>B</b></span><span class="ok">Prediction <b>B</b> &#10003; correct</span></p>
+        </div>
+      </div>
+
+      <div class="lens-bar">
+        <div class="chips" role="group" aria-label="Highlight">
+          <button type="button" data-f="all" aria-pressed="true">All tokens</button>
+          <button type="button" data-f="hi" aria-pressed="false">High credit &ge; 1.33</button>
+          <button type="button" data-f="lo" aria-pressed="false">Low credit &le; 1.15</button>
+        </div>
+        <button type="button" class="replay" id="replay" aria-label="Replay animation"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>Replay</button>
+      </div>
+
+      <div class="lens-text" id="lens-text" aria-live="polite"></div>
+
+      <div class="lens-foot">
+        <div class="legend">
+          <span class="lg-end">low visual<br>dependency</span>
+          <div class="lg-bar"><i class="lg-mark" id="lg-mark"></i><div class="lg-ticks"><span style="left:12.5%">1.10</span><span style="left:37.5%">1.20</span><span style="left:62.5%">1.30</span><span style="left:87.5%">1.40</span></div></div>
+          <span class="lg-end r">high visual<br>dependency</span>
+        </div>
+        <p class="lens-read" id="lens-read">Hover a token to read its weight.</p>
+      </div>
+    </div>
+    <p class="lens-cap"><b>Case study.</b> Without any token-level supervision, HiCCR gives the highest credit to tokens that <span class="sw r"></span>read the image (clock positions, hour digits, the labels “watched a movie” and “ate dinner”), and the lowest to tokens that <span class="sw b"></span>compute or connect (“Next, I look”, “Therefore”, the closing tags). Weights are approximate, estimated from the color map of the appendix figure. Three more cases are shown below.</p>
+
+    <div class="cases">
+      <div class="cases-nav" role="tablist" aria-label="More case studies">
+        <button role="tab" aria-selected="true" data-c="0">Fraction of shapes</button>
+        <button role="tab" aria-selected="false" data-c="1">Counting cans</button>
+        <button role="tab" aria-selected="false" data-c="2">Counting squares</button>
+      </div>
+      <div class="case-stage">
+        <figure class="on"><div class="frame"><img src="assets/case2.webp" alt="Case study: fraction of shapes, tokens colored by context credit." loading="lazy"></div></figure>
+        <figure><div class="frame"><img src="assets/case3.webp" alt="Case study: counting a grid of cans, tokens colored by context credit." loading="lazy"></div></figure>
+        <figure><div class="frame"><img src="assets/case4.webp" alt="Case study: counting a grid of squares, tokens colored by context credit." loading="lazy"></div></figure>
+      </div>
+    </div>
   </div>
 </section>
 
