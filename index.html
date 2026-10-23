@@ -1,0 +1,678 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HiCCR · Not All Tokens Should Be Treated Equally: Context Credits Reassignment (NeurIPS 2026)</title>
+<meta name="description" content="HiCCR reassigns RLVR credit at token and trajectory levels using intra-visual attention concentration. +7.99 AVG@8 over GRPO on Qwen3-VL-4B, 72.76% on 8B, under 3% overhead. NeurIPS 2026.">
+<meta property="og:title" content="Not All Tokens Should Be Treated Equally: Context Credits Reassignment">
+<meta property="og:description" content="Hierarchical Context Credit Reassignment (HiCCR) for multimodal RLVR. NeurIPS 2026.">
+<meta property="og:image" content="assets/fig2.webp">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%232b2420'/%3E%3Crect x='6' y='9' width='6' height='14' fill='%23d9472b'/%3E%3Crect x='13' y='13' width='6' height='10' fill='%23e8b9a8'/%3E%3Crect x='20' y='16' width='6' height='7' fill='%233a6ea5'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&family=Schibsted+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossorigin="anonymous">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="bar" id="bar">
+  <div class="wrap">
+    <a class="brand" href="#top">Hi<i>CC</i>R</a>
+    <nav aria-label="Sections">
+      <a href="#problem">Problem</a>
+      <a href="#theory">Theory</a>
+      <a href="#method">Method</a>
+      <a href="#results">Results</a>
+      <a href="#ablation">Ablations</a>
+      <a href="#inside">Inside HiCCR</a>
+      <a href="#cite">Cite</a>
+    </nav>
+  </div>
+  <div class="progress" id="progress"></div>
+</header>
+
+<main id="top">
+
+<!-- ================= HERO ================= -->
+<section class="hero">
+  <div class="wrap">
+    <div class="venue rv"><b>NeurIPS 2026</b> 40th Conference on Neural Information Processing Systems</div>
+
+    <h1 class="title rv" aria-label="Not All Tokens Should Be Treated Equally">
+      <span class="tk" data-c="0.35">Not</span>
+      <span class="tk" data-c="0.55">All</span>
+      <span class="tk" data-c="1.0">Tokens</span>
+      <span class="tk" data-c="-0.7">Should</span>
+      <span class="tk" data-c="-0.9">Be</span>
+      <span class="tk" data-c="0.6">Treated</span>
+      <span class="tk" data-c="0.9">Equally</span>
+    </h1>
+    <p class="subtitle rv">Context <em>Credits</em> Reassignment</p>
+
+    <div class="hero-grid">
+      <div class="rv">
+        <p class="authors">
+          <span>Shujian Gao<sup>1,2,*</sup></span>,
+          <span>Yuan Wang<sup>4,*</sup></span>,
+          <span>Jiamei Yan<sup>3</sup></span>,
+          <span>Penghao Zhou<sup>3,‡</sup></span>,
+          <span>Qinglei Wang<sup>3,‡</sup></span>,
+          <span>Jiangtao Yan<sup>5</sup></span>,
+          <span>Zuxuan Wu<sup>1,2,†</sup></span>,
+          <span>Yu-Gang Jiang<sup>1,2,†</sup></span>
+        </p>
+        <p class="affils">
+          <sup>1</sup>Institute of Trustworthy Embodied AI, Fudan University &nbsp;·&nbsp;
+          <sup>2</sup>Shanghai Innovation Institute &nbsp;·&nbsp;
+          <sup>3</sup>ByteDance TikTok &nbsp;·&nbsp;
+          <sup>4</sup>Zhejiang University &nbsp;·&nbsp;
+          <sup>5</sup>Wuhan University
+        </p>
+        <p class="notes">* Equal contribution &nbsp; ‡ Project lead &nbsp; † Corresponding authors</p>
+
+        <div class="links">
+          <a class="btn primary" href="paper.pdf" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg>
+            Paper (PDF)
+          </a>
+          <span class="btn soon" aria-disabled="true" title="arXiv version coming soon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 4l16 16M20 4L4 20"/></svg>
+            arXiv <small>Coming soon</small>
+          </span>
+          <span class="btn soon" aria-disabled="true" title="Code release coming soon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M8 7l-5 5 5 5M16 7l5 5-5 5"/></svg>
+            Code <small>Coming soon</small>
+          </span>
+          <a class="btn" href="#cite">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M7 7h4v4H8c0 3 1 4 3 5M14 7h4v4h-3c0 3 1 4 3 5"/></svg>
+            BibTeX
+          </a>
+        </div>
+      </div>
+
+      <aside class="legend-key rv">
+        The title is colored the way HiCCR sees a response: every token gets its own <b>context credit</b> β<sub>t</sub>, from how sharply it attends to the image.
+        <div class="scale"></div>
+        <div class="ends"><span>low visual dependency</span><span>high visual dependency</span></div>
+      </aside>
+    </div>
+  </div>
+</section>
+
+<!-- ================= TL;DR STRIP ================= -->
+<section class="tldr" aria-label="Key results">
+  <div class="wrap">
+    <p class="lead rv">Multimodal RLVR gives <b>every token the same advantage</b>. HiCCR reweights it by how much each token, and each rollout, actually <b>looks at the image</b>.</p>
+    <div class="fact rv"><div class="v num">+7.99</div><div class="k">AVG@8 over GRPO<br>Qwen3-VL-4B</div></div>
+    <div class="fact rv"><div class="v num">72.76<small>%</small></div><div class="k">AVG@8 on 8B. Higher than GPT-4o and Qwen2.5-VL-72B on these 9 benchmarks</div></div>
+    <div class="fact rv"><div class="v num">&lt;3<small>%</small></div><div class="k">Extra wall-clock time. No extra backward pass, no auxiliary model</div></div>
+    <div class="fact rv"><div class="v num">4<small>/4</small></div><div class="k">AVG@8 wins in matched pairs (GRPO / DAPO × 4B / 8B)</div></div>
+  </div>
+</section>
+
+<!-- ================= 01 PROBLEM ================= -->
+<section class="sec" id="problem">
+  <div class="wrap">
+    <div class="sec-head rv">
+      <div class="sec-no">01<span>The problem</span></div>
+      <div>
+        <h2>Uniform credit is not even <em>locally</em> optimal</h2>
+        <p class="dek">GRPO and DAPO give one trajectory-level advantage Â to every generated token, whether the token reads a clock hand from the image or just writes “Therefore”.</p>
+      </div>
+    </div>
+
+    <div class="body">
+      <div class="noise rv">
+        <div class="prose">
+          <p>Our first experiment is a sanity check. We take the advantage that RLVR gives each token and multiply it by <strong>random noise</strong> <span class="num">w<sub>t</sub> ∼ 𝒩(1, 0.2²)</span>. The noise carries no information.</p>
+          <p>It still <strong>beats uniform credit on all four configurations</strong>: GRPO and DAPO, on both Qwen3-VL-4B and 8B. If uninformative non-uniformity helps, then uniform credit leaves gains on the table. The real question is <em>which</em> non-uniform signal to use.</p>
+        </div>
+        <div class="noise-viz" aria-hidden="true">
+          <div class="noise-label"><span>Uniform credit (Â for every token)</span><b class="num">68.29</b></div>
+          <div class="noise-row" id="nr-uni"></div>
+          <div class="noise-label"><span>× random 𝒩(1, 0.2²)</span><b class="num">71.40</b></div>
+          <div class="noise-row rand" id="nr-rand"></div>
+          <div class="noise-label"><span class="muted">AVG@8 · DAPO · Qwen3-VL-8B</span><span class="r">+3.11</span></div>
+        </div>
+      </div>
+
+      <h3 class="rv">RLVR under uniform credit weakens visual grounding</h3>
+      <div class="prose rv">
+        <p>Uniform credit is also not neutral. Compared with the base model, models after GRPO or DAPO training rely <strong>less</strong> on the image. We see this along three complementary axes.</p>
+      </div>
+
+      <div class="axes rv">
+        <div class="axis">
+          <div class="n">i.</div>
+          <h5>Attention</h5>
+          <p>Image attention mass drops as generation proceeds. Uniform RLVR speeds up the drift.</p>
+          <div class="stat num">+15.7%<small>HiCCR-G vs GRPO image attention, 4B</small></div>
+        </div>
+        <div class="axis">
+          <div class="n">ii.</div>
+          <h5>Gradient attribution</h5>
+          <p>Measured with Input×Gradient: the share of attribution that goes to image tokens shrinks.</p>
+          <div class="stat num">+3.3pp<small>Recovered gradient share for HiCCR</small></div>
+        </div>
+        <div class="axis">
+          <div class="n">iii.</div>
+          <h5>Functional dependence</h5>
+          <p>Zero out the image embeddings and measure the accuracy drop. RLVR models drop less, so they depend less on vision.</p>
+          <div class="stat num">+7.0pp<small>Larger drop than GRPO on MMMU-Pro, so more vision-reliant</small></div>
+        </div>
+      </div>
+
+      <figure class="bleed rv">
+        <div class="frame"><img src="assets/fig1.webp" alt="Figure 1: three-axis diagnosis of visual grounding under RLVR: image attention over generation, normalized gradient share, and zero-embedding ablation." loading="lazy"></div>
+        <figcaption><b>Figure 1.</b> Diagnosis on three axes: attention mass on image tokens over generation progress, normalized Input×Gradient share, and the accuracy drop when image embeddings are zeroed out. Uniform RLVR (GRPO/DAPO) weakens all three. HiCCR restores them.</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 02 THEORY ================= -->
+<section class="sec" id="theory">
+  <div class="wrap">
+    <div class="sec-head rv">
+      <div class="sec-no">02<span>Why it happens</span></div>
+      <div>
+        <h2>Uniform credit <em>amplifies</em> a bias pretraining already put in place</h2>
+        <p class="dek">Pretrained VLMs already favor language priors. Pushing a single positive advantage through every token turns that asymmetry into a gradient imbalance, and the imbalance into attention drift.</p>
+      </div>
+    </div>
+
+    <div class="body">
+      <div class="theorems rv">
+        <div class="thm">
+          <div class="tag">Assumption B.1 · verified</div>
+          <h5>Language-prior dominance</h5>
+          <p>Non-visual context has larger downstream-projected activation magnitude than visual context:</p>
+          <div class="eq" data-tex="\kappa_{\text{emp}} = \frac{\overline{\|\,\cdot\,\|}_{\text{text}}}{\overline{\|\,\cdot\,\|}_{\text{vis}}} \;>\; 1"></div>
+          <p>Measured with full forward–backward passes on Qwen3-VL-4B/8B and InternVL3-8B across all benchmarks.</p>
+        </div>
+        <div class="thm">
+          <div class="tag">Theorem B.3</div>
+          <h5>Gradient-budget bias</h5>
+          <p>For a positive-advantage update with uniform credit Â &gt; 0, the non-visual gradient contribution to W<sub>Q</sub> strictly exceeds the visual one on text-dominant steps:</p>
+          <div class="eq" data-tex="\textstyle\sum_{t}\hat A\,\|G^{T}_t\| \;>\; \sum_{t}\hat A\,\|G^{V}_t\|"></div>
+        </div>
+        <div class="thm">
+          <div class="tag">Theorem B.4</div>
+          <h5>Local visual-attention drift</h5>
+          <p>To first order, the visual attention mass changes as</p>
+          <div class="eq" data-tex="\Delta\alpha^{V}_t = -\eta\hat A\,D_t + \eta\hat A\,R_t + O(\|\Delta W_Q\|^2)"></div>
+          <p>It therefore <em>decreases</em> whenever the same-step drift D<sub>t</sub> dominates the cross-step term |R<sub>t</sub>|.</p>
+        </div>
+      </div>
+
+      <div class="chain rv" aria-label="Causal chain">
+        <span>Pretrained language prior (κ<sub>emp</sub> &gt; 1)</span><i>→</i>
+        <span>Uniform Â &gt; 0 on every token</span><i>→</i>
+        <span>Text-side gradient budget dominates</span><i>→</i>
+        <span class="end">Visual attention drifts down</span>
+      </div>
+
+      <figure class="rv">
+        <div class="frame"><img src="assets/fig6.webp" alt="Figure 6: empirical distribution of kappa_emp above one across benchmarks, layers and model families." loading="lazy"></div>
+        <figcaption><b>Figure 6.</b> Empirical support for language-prior dominance. κ<sub>emp</sub> stays above 1 across benchmarks, layers and model families (Qwen3-VL 4B/8B, InternVL3-8B). Under HiCCR the drift term becomes −ηα<sup>(i)</sup>β<sub>t</sub>ÂD<sub>t</sub>, so visually grounded steps get proportionally more weight.</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 03 METHOD ================= -->
+<section class="sec" id="method">
+  <div class="wrap">
+    <div class="sec-head rv">
+      <div class="sec-no">03<span>Method</span></div>
+      <div>
+        <h2>Hierarchical Context <em>Credit</em> Reassignment</h2>
+        <p class="dek">One attention hook gives a per-token visual-concentration score. That score sets two weights: a token-level weight β<sub>t</sub> and a trajectory-level weight α<sup>(i)</sup>. Both reshape the advantage of correct rollouts only.</p>
+      </div>
+    </div>
+
+    <figure class="rv">
+      <div class="frame"><img src="assets/fig2.webp" alt="Figure 2: overview of HiCCR. An attention hook produces per-token context credit from intra-visual attention entropy; token- and trajectory-level weights reassign the outcome advantage." loading="lazy"></div>
+      <figcaption><b>Figure 2.</b> Overview of HiCCR. An attention hook on the policy model produces a per-token context credit C<sub>V</sub>(t) from the entropy of attention within the visual tokens. The token and trajectory weights β<sub>t</sub> and α<sup>(i)</sup> are derived from C<sub>V</sub> and reassign the outcome advantage as Ã<sub>t</sub><sup>(i)</sup> = α<sup>(i)</sup>β<sub>t</sub>Â<sup>(i)</sup>, for positive-advantage trajectories only.</figcaption>
+    </figure>
+
+    <div class="body">
+      <div class="steps">
+        <div class="step rv">
+          <div class="step-k">Step 1 · §2.2.1<b>Context credit score</b></div>
+          <div class="step-body">
+            <div>
+              <p>For each generated token we look only at its attention over the <strong>visual positions</strong> 𝒱 and renormalize it there. The score is <em>visual information concentration</em>: one minus the normalized entropy of that distribution.</p>
+              <p>A token that locks onto a few image patches (a clock hand, a vertex) scores high. A token whose image attention is diffuse scores low. The score is averaged over heads and the <strong>last two layers</strong>, with τ = 0.5.</p>
+            </div>
+            <div class="math">
+              <div data-tex="p_V(j\mid t,h)=\frac{\exp(e^{(h)}_{t,j}/\tau)}{\sum_{k\in\mathcal V}\exp(e^{(h)}_{t,k}/\tau)},\quad e^{(h)}_{t,j}=\frac{q_t^{\top}k_j}{\sqrt d}" class="d"></div>
+              <div data-tex="C_V(t)=1-\frac{H\!\left(p_V(\cdot\mid t,h)\right)}{\log|\mathcal V|}\;\in[0,1]" class="d"></div>
+              <div class="cap">Concentration over the visual subset (not magnitude) is what matters. See the ladder in §04.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="step rv">
+          <div class="step-k">Step 2 · §2.2.2<b><em>T</em>oken <em>C</em>redit <em>R</em>eassignment</b></div>
+          <div class="step-body">
+            <div>
+              <p>The scores are z-scored within each sequence and passed through a sigmoid. The result is a <strong>smooth, bounded</strong> multiplier: every token keeps its gradient, and visually grounded tokens get up to 1 + λ<sub>tok</sub> times more.</p>
+              <p>Unlike top-k masking, nothing is thrown away, and there is no masking ratio to tune. Default λ<sub>tok</sub> = 0.5.</p>
+            </div>
+            <div class="math">
+              <div data-tex="\bar c_t=\frac{C_V(t)-\mu_{C}}{\sigma_{C}+\epsilon}" class="d"></div>
+              <div data-tex="\beta_t = 1+\lambda_{\text{tok}}\,\sigma(\bar c_t)\;\in\;(1,\,1+\lambda_{\text{tok}})" class="d"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="step rv">
+          <div class="step-k">Step 3 · §2.2.3<b><em>T</em>rajectory <em>A</em>dvantage <em>R</em>eweighting</b></div>
+          <div class="step-body">
+            <div>
+              <p>Among the rollouts sampled for one prompt, those with stronger overall visual engagement are more likely to be right <em>for the right reason</em>. TAR min–max scales each trajectory's mean credit into a weight in [1, 2].</p>
+            </div>
+            <div class="math">
+              <div data-tex="\bar S^{(i)}=\frac{1}{T_i}\sum_{t}C_V^{(i)}(t)" class="d"></div>
+              <div data-tex="\alpha^{(i)}=1+\frac{\bar S^{(i)}-\min_k\bar S^{(k)}}{\max_k\bar S^{(k)}-\min_k\bar S^{(k)}+\epsilon}\;\in[1,2]" class="d"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="step rv">
+          <div class="step-k">Step 4 · Eq. 4<b>Asymmetric reassignment</b></div>
+          <div class="step-body">
+            <div>
+              <p>Credit is reassigned <strong>only for correct rollouts</strong>. Wrong rollouts keep their uniform negative advantage. Reshaping both signs would punish incorrect rollouts that happened to look hard at the image, mixing up visual engagement with failure. The symmetric variant loses <span class="num">5.1 / 4.0</span> points (Table 10).</p>
+            </div>
+            <div class="math">
+              <div data-tex="\tilde A^{(i)}_t=\begin{cases}\alpha^{(i)}\cdot\beta^{(i)}_t\cdot\hat A^{(i)}, & \hat A^{(i)}>0\\[2pt] \hat A^{(i)}, & \text{otherwise}\end{cases}" class="d"></div>
+              <div class="cap">Drop-in for GRPO (→ HiCCR-G) and DAPO (→ HiCCR-D).</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="impl rv" aria-label="Implementation notes">
+        <span>Forward hooks on q_proj / k_proj</span>
+        <span>Two-pass chunked logsumexp</span>
+        <span>torch.no_grad · no extra backward</span>
+        <span>FlashAttention compatible</span>
+        <span>No reward model / value net / extra data</span>
+        <span>veRL · 8×H200</span>
+      </div>
+
+      <!-- interactive lens -->
+      <div class="lens rv" id="lens">
+        <div class="lens-top">
+          <h4>Credit lens · a real rollout from Qwen3-VL-8B</h4>
+          <div class="seg" role="group" aria-label="Credit view">
+            <button type="button" data-mode="uniform" aria-pressed="false">Uniform RLVR</button>
+            <button type="button" data-mode="hiccr" aria-pressed="true">HiCCR β<sub>t</sub></button>
+          </div>
+        </div>
+        <div class="lens-q">
+          <div class="clocks" aria-hidden="true">
+            <div class="clock"><svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="28" fill="none" stroke="currentColor" stroke-width="2.5"/><line x1="32" y1="32" x2="25" y2="44" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><line x1="32" y1="32" x2="32" y2="10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>watched a movie</div>
+            <div class="clock"><svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="28" fill="none" stroke="currentColor" stroke-width="2.5"/><line x1="32" y1="32" x2="18" y2="32" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><line x1="32" y1="32" x2="32" y2="10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>ate dinner</div>
+          </div>
+          <p><b>Q.</b> The clocks show two things Lily did Tuesday evening. Which did Lily do earlier? &nbsp;(A) ate dinner &nbsp;(B) watched a movie &nbsp;·&nbsp; <b class="r">Prediction: B ✓</b></p>
+        </div>
+        <div class="lens-text" id="lens-text" aria-live="polite"></div>
+        <div class="lens-foot">
+          <span>Hover a token to see its weight. Approximate β<sub>t</sub> read from Appendix case study 1.</span>
+          <span style="display:flex;gap:.6rem;align-items:center">low <span class="scale"></span> high</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 04 RESULTS ================= -->
+<section class="sec" id="results">
+  <div class="wrap">
+    <div class="sec-head rv">
+      <div class="sec-no">04<span>Main results</span></div>
+      <div>
+        <h2>Best AVG@8 in every matched pair, <em>against nine RLVR baselines</em></h2>
+        <p class="dek">ViRL39K training, G = 5 rollouts, AVG@8 on nine reasoning benchmarks. All baselines were re-run in the same environment under the same conditions.</p>
+      </div>
+    </div>
+
+    <div class="body">
+      <div class="tabs rv" role="tablist" aria-label="Backbone">
+        <button role="tab" aria-selected="false" data-bk="4b">Qwen3-VL-4B</button>
+        <button role="tab" aria-selected="true" data-bk="8b">Qwen3-VL-8B</button>
+      </div>
+      <div class="bars rv" id="bars" aria-live="polite"></div>
+      <p class="muted rv" style="font-size:.8rem;margin-top:1rem">AVG@8 (%). Grey bars: other RLVR baselines. Darker grey: the matched base algorithm. <span class="r">Red</span>: HiCCR-G (on GRPO). <span class="b">Blue</span>: HiCCR-D (on DAPO). The axis starts at 45.</p>
+
+      <h3 class="rv">Per-benchmark breakdown</h3>
+    </div>
+
+    <div class="tbl-wrap rv">
+      <table id="t1">
+        <thead>
+          <tr class="grp"><th></th><th colspan="6" style="text-align:center">Mathematical reasoning</th><th colspan="5" style="text-align:center">General &amp; logical reasoning</th><th></th></tr>
+          <tr><th>Method</th><th>Geo3K</th><th>MVerse</th><th>MVista</th><th>WeMath</th><th>MV-V</th><th>Avg.</th><th>MMK12</th><th>Clevr</th><th>Logic</th><th>MMMU</th><th>Avg.</th><th>AVG@8</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div class="body">
+      <div class="two wide-left" style="margin-top:4rem">
+        <div class="rv">
+          <h3 style="margin-top:0">Small model, frontier-level aggregate</h3>
+          <div class="prose">
+            <p>On the same nine benchmarks, the 8B HiCCR-D model scores <strong>72.76%</strong>. That is above Qwen2.5-VL-<strong>72B</strong>, InternVL2.5-78B and LLaVA-OV-72B, and above the proprietary GPT-4o and Gemini-2.0-flash (Table 7).</p>
+            <p>The largest gains appear on the most vision-dependent benchmarks, such as MathVerse and MathVerse-Vision. This is consistent with the hypothesis that uniform credit mostly hurts visually grounded reasoning.</p>
+          </div>
+        </div>
+        <div class="cmp-wrap rv">
+          <h4>AVG@8 · 9 benchmarks (Table 7)</h4>
+          <ul class="cmp" id="cmp"></ul>
+        </div>
+      </div>
+
+      <h3 class="rv" id="ladder-h">A ladder of credit signals</h3>
+      <div class="prose rv">
+        <p>Is the gain just from being non-uniform? No. We swap the score for five alternatives under identical training. <strong>Random</strong> beats Uniform, but time-decay and entropy masks are unreliable. <strong>HiCCR-T</strong> uses the same formula over the <em>text</em> context and often ends up <em>below</em> Uniform. Raw attention energy over visual tokens, with no intra-visual normalization, beats every heuristic but still trails the full score. <strong>Concentration over the visual subset</strong> is what matters.</p>
+      </div>
+      <div class="tabs rv" role="tablist" aria-label="Ladder configuration" id="ladder-tabs" style="margin-top:1.5rem">
+        <button role="tab" aria-selected="true" data-k="0">4B · GRPO</button>
+        <button role="tab" aria-selected="false" data-k="1">4B · DAPO</button>
+        <button role="tab" aria-selected="false" data-k="2">8B · GRPO</button>
+        <button role="tab" aria-selected="false" data-k="3">8B · DAPO</button>
+      </div>
+      <div class="ladder rv" id="ladder"></div>
+      <p class="muted rv" style="font-size:.8rem;margin-top:.8rem">Bars show the change in AVG@8 relative to Uniform (vertical line). Table 2.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 05 GENERALIZATION ================= -->
+<section class="sec" id="general">
+  <div class="wrap">
+    <div class="sec-head rv">
+      <div class="sec-no">05<span>Generalization</span></div>
+      <div>
+        <h2>Holds across <em>architectures, data and tasks</em></h2>
+        <p class="dek">We swap the backbone family, shrink the training data to a single geometry set, and test perception and hallucination benchmarks HiCCR never trained on.</p>
+      </div>
+    </div>
+
+    <div class="body">
+      <div class="gen rv">
+        <div>
+          <h4>Another architecture · InternVL3-8B (Table 6)</h4>
+          <table class="mini">
+            <thead><tr><th>Pair</th><th>Base RL</th><th>+ HiCCR</th><th>Δ</th></tr></thead>
+            <tbody>
+              <tr><td>GRPO → HiCCR-G</td><td>55.47</td><td><b>58.68</b></td><td class="arrow">+3.21</td></tr>
+              <tr><td>DAPO → HiCCR-D</td><td>57.48</td><td><b>60.71</b></td><td class="arrow">+3.23</td></tr>
+            </tbody>
+          </table>
+          <p class="muted" style="font-size:.8rem;margin:.6rem 0 0">Different vision encoder, connector and language prior. Base Instruct model: 47.47.</p>
+        </div>
+        <div>
+          <h4>Less data · trained on Geo3K only (Table 5)</h4>
+          <table class="mini">
+            <thead><tr><th>Setting</th><th>Base RL</th><th>+ HiCCR</th><th>Δ</th></tr></thead>
+            <tbody>
+              <tr><td>4B · GRPO</td><td>54.01</td><td><b>56.69</b></td><td class="arrow">+2.68</td></tr>
+              <tr><td>4B · DAPO</td><td>51.48</td><td><b>54.65</b></td><td class="arrow">+3.17</td></tr>
+              <tr><td>8B · GRPO</td><td>58.89</td><td><b>62.07</b></td><td class="arrow">+3.18</td></tr>
+              <tr><td>8B · DAPO</td><td>58.58</td><td><b>61.41</b></td><td class="arrow">+2.83</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <figure class="bleed rv">
+        <div class="frame"><img src="assets/fig5.webp" alt="Figure 5: MMStar and HallusionBench accuracy for all methods at 4B and 8B; HiCCR variants are highest." loading="lazy"></div>
+        <figcaption><b>Figure 5.</b> Perception (MMStar) and hallucination (HallusionBench) tests, which HiCCR did not train for. HiCCR reaches <b>72.3 / 71.3</b> on MMStar (8B / 4B) and <b>62.7 / 59.7</b> on HallusionBench. Grounding credit in the image makes the model more perceptive and less prone to hallucination.</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 06 EFFICIENCY ================= -->
+<section class="sec" id="efficiency">
+  <div class="wrap">
+    <div class="sec-head rv">
+      <div class="sec-no">06<span>Cost</span></div>
+      <div>
+        <h2>Almost free: <em>+2.7% time</em>, no extra backward pass</h2>
+        <p class="dek">The credit score reuses the queries and keys already computed in the forward pass. Perturbation-based PAPO needs a second backward pass.</p>
+      </div>
+    </div>
+
+    <div class="body">
+      <div class="eff rv">
+        <div>
+          <div class="cost" id="cost"></div>
+          <div class="cost-key"><span><i style="background:var(--ink-3)"></i>Seconds / step</span><span><i style="background:var(--paper-3)"></i>Peak memory (GB)</span></div>
+        </div>
+        <div class="tbl-wrap" style="margin:0">
+          <table>
+            <thead><tr><th>Qwen3-VL-8B</th><th>s / step</th><th>Peak mem.</th><th>AVG@8</th></tr></thead>
+            <tbody>
+              <tr class="paired"><td>GRPO</td><td>619</td><td>115.8 GB</td><td>62.49</td></tr>
+              <tr class="ours"><td>HiCCR-G</td><td>636 <small class="l">+2.7%</small></td><td>121.0 GB <small class="l">+4.5%</small></td><td>67.19 <small class="g">+4.70</small></td></tr>
+              <tr class="paired"><td>DAPO</td><td>634</td><td>118.1 GB</td><td>68.29</td></tr>
+              <tr class="ours d"><td>HiCCR-D</td><td>651 <small class="l">+2.7%</small></td><td>123.4 GB <small class="l">+4.5%</small></td><td>72.76 <small class="g">+4.47</small></td></tr>
+              <tr><td>PAPO</td><td>782 <small class="l">+26.3%</small></td><td>129.7 GB <small class="l">+12%</small></td><td>70.25</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 07 ABLATIONS ================= -->
+<section class="sec" id="ablation">
+  <div class="wrap">
+    <div class="sec-head rv">
+      <div class="sec-no">07<span>Ablations</span></div>
+      <div>
+        <h2>Every design choice, <em>stress-tested</em></h2>
+        <p class="dek">The two levels complement each other. Soft weighting beats hard masking. Later layers give better signals. Asymmetry matters. The method is not sensitive to λ<sub>tok</sub>.</p>
+      </div>
+    </div>
+
+    <div class="body">
+      <div class="abl">
+        <div class="abl-item rv">
+          <h5>TCR and TAR are complementary</h5>
+          <p>Each level helps alone. Together they do best (Table 3).</p>
+          <table class="mini">
+            <thead><tr><th>Setting</th><th>Base</th><th>+TCR</th><th>+TAR</th><th>Both</th></tr></thead>
+            <tbody>
+              <tr><td>4B · DAPO</td><td>67.58</td><td>68.84</td><td>68.15</td><td><b class="r">68.95</b></td></tr>
+              <tr><td>8B · GRPO</td><td>62.49</td><td>66.56</td><td>64.73</td><td><b class="r">67.19</b></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="abl-item rv">
+          <h5>Soft weighting &gt; hard top-k masking</h5>
+          <p>Masking discards gradient from partly informative tokens. Top-20% even hurts (Table 8, DAPO).</p>
+          <table class="mini">
+            <thead><tr><th></th><th>Uniform</th><th>Top-20%</th><th>Top-40%</th><th>HiCCR</th></tr></thead>
+            <tbody>
+              <tr><td>4B</td><td>67.58</td><td>65.21</td><td>67.65</td><td><b class="r">68.95</b></td></tr>
+              <tr><td>8B</td><td>68.29</td><td>67.93</td><td>68.87</td><td><b class="r">72.76</b></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="abl-item rv">
+          <h5>Asymmetric &gt; symmetric shaping</h5>
+          <p>Reshaping negative rollouts too would penalize visual engagement on wrong answers (Table 10, GRPO).</p>
+          <table class="mini">
+            <thead><tr><th></th><th>Symmetric</th><th>Asymmetric</th><th>Δ</th></tr></thead>
+            <tbody>
+              <tr><td>4B</td><td>64.80</td><td><b class="r">69.94</b></td><td class="arrow">+5.14</td></tr>
+              <tr><td>8B</td><td>63.19</td><td><b class="r">67.19</b></td><td class="arrow">+4.00</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="abl-item rv">
+          <h5>Later layers give better credit</h5>
+          <p>The last layers are where the model commits to its reasoning. Credit should follow where visual information is <em>acted on</em> (Table 9, 4B GRPO).</p>
+          <div class="spark" aria-label="Target layer ablation">
+            <div style="height:30%"><span>67.19</span></div>
+            <div style="height:62%"><span>68.49</span></div>
+            <div class="hi" style="height:96%"><span>69.94</span></div>
+          </div>
+          <div class="spark-x"><span>First two</span><span>Middle two</span><span>Last two</span></div>
+        </div>
+
+        <div class="abl-item rv">
+          <h5>Low sensitivity to λ<sub>tok</sub></h5>
+          <p>Gains hold across 0.5 to 0.8. Too small approaches Uniform, and 1.5 over-amplifies (Table 11, 4B DAPO; Uniform = 67.58).</p>
+          <div class="spark" aria-label="lambda sweep">
+            <div style="height:40%"><span>67.83</span></div>
+            <div style="height:48%"><span>68.15</span></div>
+            <div class="def" style="height:66%"><span>68.97</span></div>
+            <div class="hi" style="height:74%"><span>69.31</span></div>
+            <div style="height:10%"><span>66.24</span></div>
+          </div>
+          <div class="spark-x"><span>0.1</span><span>0.2</span><span>0.5*</span><span>0.8</span><span>1.5</span></div>
+        </div>
+
+        <div class="abl-item rv">
+          <h5>Visual gradient attribution recovered</h5>
+          <p>Share of Input×Gradient attribution on image tokens (%, Table 12).</p>
+          <table class="mini">
+            <thead><tr><th></th><th>Base</th><th>GRPO</th><th>DAPO</th><th>HiCCR-G</th><th>HiCCR-D</th></tr></thead>
+            <tbody>
+              <tr><td>4B</td><td>25.0</td><td>23.9</td><td>22.7</td><td>25.8</td><td><b class="r">26.1</b></td></tr>
+              <tr><td>8B</td><td>22.0</td><td>24.2</td><td>20.8</td><td><b class="r">26.1</b></td><td>22.4</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <figure class="bleed rv">
+        <div class="frame"><img src="assets/fig3.webp" alt="Figure 3: training dynamics: reward, response length, gradient norm and entropy for GRPO, DAPO and HiCCR." loading="lazy"></div>
+        <figcaption><b>Figure 3.</b> Training dynamics. HiCCR reaches higher reward accuracy (about 0.80–0.82) with <b>shorter responses</b>, bounded gradient norms (0.15–0.25) and lower entropy. Optimization is more stable and more confident.</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 08 INSIDE ================= -->
+<section class="sec" id="inside">
+  <div class="wrap">
+    <div class="sec-head rv">
+      <div class="sec-no">08<span>Interpretability</span></div>
+      <div>
+        <h2>Credit goes to the tokens that <em>look</em></h2>
+        <p class="dek">HiCCR gets no token-level supervision. Its highest credit still lands on geometry and diagram tokens, early in the reasoning, where the scaffold is set up.</p>
+      </div>
+    </div>
+
+    <div class="body">
+      <div class="stats rv">
+        <div><b class="num">1.303 <span class="muted">vs</span> 1.236</b>median β, visual vs non-visual tokens</div>
+        <div><b class="num">d = 0.547</b>Cohen's effect size, p &lt; 0.001</div>
+        <div><b class="num">μ 1.249 · σ 0.105</b>smooth, near-Gaussian β<sub>t</sub></div>
+        <div><b class="num">Δ = −1.81</b>credit decays with position</div>
+      </div>
+
+      <figure class="bleed rv">
+        <div class="frame"><img src="assets/fig4.webp" alt="Figure 4: context credit analysis on Qwen3-VL-8B: beta and alpha distributions, word cloud of high-credit tokens, credit vs position, visual vs non-visual tokens." loading="lazy"></div>
+        <figcaption><b>Figure 4.</b> Context credit analysis on Qwen3-VL-8B: (a) β<sub>t</sub> distribution, (b) right-skewed α<sup>(i)</sup> (mostly 1.1–1.5), (c) word cloud of high-credit tokens (triangle, angle, AB, diagram, …), (d) monotonic decay over position, (e) semantically visual tokens receive significantly more credit.</figcaption>
+      </figure>
+
+      <h3 class="rv">Case studies</h3>
+      <div class="prose rv"><p>Red marks high-credit tokens, the ones that <em>read the image</em>: the hand position, a shaded cell, a row of cans. Blue marks low-credit tokens, the ones that <em>compute or connect</em>.</p></div>
+      <div class="cases-nav rv" role="tablist" aria-label="Case studies">
+        <button role="tab" aria-selected="true" data-c="0">Clock reading</button>
+        <button role="tab" aria-selected="false" data-c="1">Fraction of shapes</button>
+        <button role="tab" aria-selected="false" data-c="2">Counting cans</button>
+        <button role="tab" aria-selected="false" data-c="3">Counting squares</button>
+      </div>
+      <div class="case-stage rv">
+        <figure class="on"><div class="frame"><img src="assets/case1.webp" alt="Case study: clock reading with token-level credit colors" loading="lazy"></div></figure>
+        <figure><div class="frame"><img src="assets/case2.webp" alt="Case study: fraction of shapes with token-level credit colors" loading="lazy"></div></figure>
+        <figure><div class="frame"><img src="assets/case3.webp" alt="Case study: counting a 10 by 10 grid of cans" loading="lazy"></div></figure>
+        <figure><div class="frame"><img src="assets/case4.webp" alt="Case study: counting a 10 by 10 grid of squares" loading="lazy"></div></figure>
+      </div>
+
+      <div class="two" style="margin-top:3rem">
+        <figure class="rv" style="margin:0">
+          <div class="frame"><img src="assets/fig8.webp" alt="Figure 8: attention dynamics over generation on six benchmarks for 8B models." loading="lazy"></div>
+          <figcaption><b>Attention dynamics (8B).</b> On six benchmarks, HiCCR keeps more attention mass on the image throughout generation.</figcaption>
+        </figure>
+        <figure class="rv" style="margin:0">
+          <div class="frame"><img src="assets/fig7.webp" alt="Figure 7: cross-scale counterfactual ablation; accuracy drop when visual input is destroyed." loading="lazy"></div>
+          <figcaption><b>Counterfactual ablation.</b> When the visual evidence is destroyed, HiCCR models lose the most accuracy. Their reasoning really depends on what they see.</figcaption>
+        </figure>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 09 LIMITATIONS + CITE ================= -->
+<section class="sec" id="cite">
+  <div class="wrap">
+    <div class="sec-head rv">
+      <div class="sec-no">09<span>Scope &amp; citation</span></div>
+      <div>
+        <h2>What HiCCR does <em>not</em> claim</h2>
+      </div>
+    </div>
+    <div class="body">
+      <div class="two">
+        <ol class="limits rv">
+          <li><span><b>Verifiable rewards.</b> HiCCR is built on RLVR. Open-ended or preference-based rewards are not covered.</span></li>
+          <li><span><b>Attention access.</b> It needs the policy's queries and keys, so it targets open-weight models.</span></li>
+          <li><span><b>A proxy, not causal saliency.</b> Visual concentration is a lightweight estimate of visual dependence. It is not a causal attribution.</span></li>
+          <li><span><b>Image only.</b> Video and audio modalities are left for future work.</span></li>
+          <li><span><b>Local theory.</b> Theorems B.3–B.4 are first-order, sufficient-condition results for small updates.</span></li>
+        </ol>
+        <div class="rv">
+          <h4>BibTeX</h4>
+          <div class="bib">
+            <button type="button" id="copy">Copy</button>
+<pre id="bibtex">@inproceedings{gao2026hiccr,
+  title     = {Not All Tokens Should Be Treated Equally:
+               Context Credits Reassignment},
+  author    = {Gao, Shujian and Wang, Yuan and Yan, Jiamei and
+               Zhou, Penghao and Wang, Qinglei and Yan, Jiangtao and
+               Wu, Zuxuan and Jiang, Yu-Gang},
+  booktitle = {Advances in Neural Information Processing Systems},
+  year      = {2026}
+}</pre>
+          </div>
+          <p class="muted" style="font-size:.8rem;margin-top:1rem">The arXiv preprint and code will be released soon. Watch this repository for updates.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>HiCCR · NeurIPS 2026 · Fudan University · Shanghai Innovation Institute · ByteDance TikTok · Zhejiang University · Wuhan University</span>
+    <span><a href="https://github.com/Daryl-GSJ/HiCCR">github.com/Daryl-GSJ/HiCCR</a></span>
+  </div>
+</footer>
+
+<div class="lb" id="lb" role="dialog" aria-modal="true" aria-label="Figure preview"><img alt=""></div>
+
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous"></script>
+<script defer src="main.js"></script>
+</body>
+</html>
