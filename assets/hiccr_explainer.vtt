@@ -1,0 +1,133 @@
+WEBVTT
+
+00:00:01.050 --> 00:00:03.788
+Not all tokens should be treated equally.
+
+00:00:03.788 --> 00:00:08.381
+This is HiCCR, Hierarchical Context Credit Reassignment,
+
+00:00:08.381 --> 00:00:14.450
+our NeurIPS 2026 paper on reinforcement learning for multimodal reasoning.
+
+00:00:15.760 --> 00:00:20.127
+When a vision-language model is trained with verifiable rewards,
+
+00:00:20.127 --> 00:00:25.585
+algorithms like GRPO and DAPO hand every token in a response the same advantage.
+
+00:00:25.585 --> 00:00:31.360
+The token that reads a clock hand from the image gets exactly the same credit as the word "therefore".
+
+00:00:32.680 --> 00:00:36.168
+Our first finding: uniform credit is suboptimal.
+
+00:00:36.168 --> 00:00:42.512
+Simply multiplying each token's advantage by random noise already beats uniform credit,
+
+00:00:42.512 --> 00:00:44.043
+in all four settings.
+
+00:00:44.043 --> 00:00:50.993
+For DAPO on the 8B model, accuracy rises from 68.3 to 71.4.
+
+00:00:52.310 --> 00:00:58.198
+Second finding: under uniform credit, RL tuning weakens visual grounding.
+
+00:00:58.198 --> 00:01:03.527
+Along three axes, attention to the image, gradient attribution to image tokens,
+
+00:01:03.527 --> 00:01:07.305
+and the accuracy lost when image embeddings are removed,
+
+00:01:07.305 --> 00:01:10.273
+the tuned model relies less on what it sees.
+
+00:01:11.580 --> 00:01:12.718
+Why does this happen?
+
+00:01:12.718 --> 00:01:15.587
+Pretrained models carry a language prior:
+
+00:01:15.587 --> 00:01:19.855
+text context produces larger activations than visual context.
+
+00:01:19.855 --> 00:01:25.700
+Under this imbalance, a uniform positive advantage sends more gradient to the text side,
+
+00:01:25.700 --> 00:01:27.892
+and visual attention drifts down.
+
+00:01:27.892 --> 00:01:33.168
+Uniform credit amplifies a bias that pretraining already put in place.
+
+00:01:34.480 --> 00:01:38.655
+HiCCR starts from a single signal: context credit.
+
+00:01:38.655 --> 00:01:44.590
+For each generated token, we measure how concentrated its attention is within the image,
+
+00:01:44.590 --> 00:01:46.343
+using the last two layers.
+
+00:01:46.343 --> 00:01:48.830
+Focused attention means high credit.
+
+00:01:48.830 --> 00:01:51.168
+Diffuse attention means low credit.
+
+00:01:52.480 --> 00:01:55.405
+Credit is then reassigned at two levels.
+
+00:01:55.405 --> 00:01:59.843
+At the token level, grounded tokens get a larger share of the advantage.
+
+00:01:59.843 --> 00:02:04.768
+At the trajectory level, rollouts that engage more with the image are upweighted.
+
+00:02:04.768 --> 00:02:07.196
+And only correct rollouts are reshaped,
+
+00:02:07.196 --> 00:02:11.305
+so a wrong answer is never punished just for looking at the image.
+
+00:02:12.620 --> 00:02:18.486
+Across nine reasoning benchmarks, HiCCR improves its base algorithm in every setting,
+
+00:02:18.486 --> 00:02:21.108
+by up to eight points on the 4B model.
+
+00:02:21.108 --> 00:02:31.340
+With only eight billion parameters, HiCCR-D reaches 72.8, ahead of Qwen2.5-VL-72B,
+
+00:02:31.340 --> 00:02:34.958
+Gemini 2.0 Flash, and GPT-4o.
+
+00:02:36.260 --> 00:02:42.110
+It adds under three percent training time, with no auxiliary model and no extra data.
+
+00:02:42.110 --> 00:02:46.724
+And the gains carry over to InternVL3, to geometry-only training,
+
+00:02:46.724 --> 00:02:50.060
+and to perception and hallucination benchmarks.
+
+00:02:51.380 --> 00:02:53.702
+Without any token-level supervision,
+
+00:02:53.702 --> 00:02:59.248
+the highest credit lands on tokens that refer to visual content: numbers on the clock,
+
+00:02:59.248 --> 00:03:00.280
+objects, shapes.
+
+00:03:00.280 --> 00:03:04.230
+And the erosion of visual grounding is largely reversed.
+
+00:03:05.540 --> 00:03:07.390
+Not all tokens are equal.
+
+00:03:07.390 --> 00:03:10.365
+Give credit where the image is actually used.
+
+00:03:10.365 --> 00:03:11.903
+That's HiCCR.

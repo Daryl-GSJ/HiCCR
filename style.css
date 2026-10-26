@@ -307,3 +307,21 @@ tbody tr:not(.grp):not(.ours):hover td { background: #f7f7f4; }
   h1 .hl { animation: none; background-size: 100% 100%; }
   .lens-text .t, .clock .hh, .clock .mh { transition: none; }
 }
+
+/* ---------- video ---------- */
+.h2-meta { font-family: var(--sans); font-size: .82rem; font-weight: 400; color: var(--ink-3); letter-spacing: .02em; margin-left: 12px; vertical-align: .2em; }
+.vid { display: grid; grid-template-columns: minmax(0, 1fr) 248px; gap: 22px; align-items: start; }
+.vid-player { border: 1px solid var(--rule); border-radius: 6px; overflow: hidden; background: #f6f4ee; aspect-ratio: 16 / 9; box-shadow: 0 24px 60px -40px rgba(27, 31, 39, .45); }
+.vid-player video { display: block; width: 100%; height: 100%; object-fit: contain; background: #f6f4ee; }
+.chapters { list-style: none; margin: 0; padding: 0; border-left: 1px solid var(--rule); counter-reset: ch; }
+.chapters button { display: grid; grid-template-columns: 44px 1fr; width: 100%; text-align: left; border: 0; background: transparent; cursor: pointer; font: 400 .86rem/1.35 var(--sans); color: var(--ink-2); padding: 7px 10px 7px 14px; margin-left: -1px; border-left: 2px solid transparent; transition: color .2s, background .2s, border-color .2s; }
+.chapters button span { font-variant-numeric: tabular-nums; color: var(--ink-3); font-size: .8rem; padding-top: 1px; }
+.chapters button:hover { background: var(--soft); color: var(--ink); }
+.chapters button.on { border-left-color: #b23a2a; color: var(--ink); font-weight: 500; background: var(--ours); }
+.chapters button.on span { color: #b23a2a; }
+@media (max-width: 900px) {
+  .vid { grid-template-columns: 1fr; }
+  .chapters { border-left: 0; border-top: 1px solid var(--rule); display: grid; grid-template-columns: 1fr 1fr; padding-top: 6px; }
+  .chapters button { border-left: 0; margin-left: 0; padding: 6px 8px; }
+}
+@media (max-width: 600px) { .h2-meta { display: block; margin: 6px 0 0; } }

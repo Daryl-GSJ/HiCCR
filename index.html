@@ -23,6 +23,7 @@
   <div class="wrap">
     <a class="brand" href="#">HiCCR</a>
     <div class="links-nav">
+      <a href="#video">Video</a>
       <a href="#abstract">Abstract</a>
       <a href="#motivation">Motivation</a>
       <a href="#method">Method</a>
@@ -94,6 +95,34 @@
       <li><b data-count="72.76" data-suf="%">72.76%</b> AVG@8 with Qwen3-VL-8B, above GPT-4o and Qwen2.5-VL-72B</li>
       <li><b>&lt;3%</b> extra wall-clock time; no auxiliary model or extra data</li>
     </ul>
+  </div>
+</section>
+
+<!-- Video -->
+<section id="video">
+  <div class="wrap wide">
+    <h2>Video Explainer <span class="h2-meta">3 min · narrated · captions</span></h2>
+    <div class="vid rv">
+      <div class="vid-player">
+        <video id="explainer" controls playsinline preload="metadata" poster="assets/video_poster.webp">
+          <source src="assets/hiccr_explainer.mp4" type="video/mp4">
+          <track kind="captions" src="assets/hiccr_explainer.vtt" srclang="en" label="English">
+        </video>
+      </div>
+      <ol class="chapters" id="chapters">
+        <li><button data-t="0"><span>0:00</span>Not all tokens are equal</button></li>
+        <li><button data-t="15.1"><span>0:15</span>The problem: uniform credit</button></li>
+        <li><button data-t="32.0"><span>0:32</span>Finding 1 · noise beats uniform</button></li>
+        <li><button data-t="51.7"><span>0:51</span>Finding 2 · grounding weakens</button></li>
+        <li><button data-t="70.9"><span>1:10</span>Why it happens</button></li>
+        <li><button data-t="93.8"><span>1:33</span>Context credit</button></li>
+        <li><button data-t="111.8"><span>1:51</span>Two-level reassignment</button></li>
+        <li><button data-t="132.0"><span>2:12</span>Results</button></li>
+        <li><button data-t="155.6"><span>2:35</span>Cost &amp; generality</button></li>
+        <li><button data-t="170.7"><span>2:50</span>Where credit goes</button></li>
+        <li><button data-t="184.9"><span>3:04</span>Takeaway</button></li>
+      </ol>
+    </div>
   </div>
 </section>
 

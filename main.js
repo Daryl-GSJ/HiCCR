@@ -40,6 +40,20 @@
     setTimeout(() => $$(".rv").forEach(reveal), 0);
   }
 
+  /* ---------- video chapters ---------- */
+  const vid = $("#explainer"), chs = $$("#chapters button");
+  if (vid && chs.length) {
+    const ts = chs.map((b) => parseFloat(b.dataset.t));
+    chs.forEach((b, i) => b.addEventListener("click", () => {
+      vid.currentTime = ts[i] + 0.01;
+      vid.play().catch(() => {});
+    }));
+    vid.addEventListener("timeupdate", () => {
+      let k = 0; ts.forEach((t, i) => { if (vid.currentTime >= t) k = i; });
+      chs.forEach((b, i) => b.classList.toggle("on", i === k && (vid.currentTime > 0 || !vid.paused)));
+    });
+  }
+
   /* ---------- highlight counters ---------- */
   const hl = $(".highlights");
   if (hl) {
