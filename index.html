@@ -143,6 +143,8 @@
       <li><b>Uniform credit is suboptimal.</b> Multiplying each token's advantage by uninformative noise w<sub>t</sub> ∼ 𝒩(1, 0.2²) already outperforms uniform credit in all four settings (GRPO/DAPO × Qwen3-VL-4B/8B), e.g., 68.29 → 71.40 AVG@8 for DAPO on 8B.</li>
       <li><b>Uniform credit weakens visual grounding.</b> Compared with the base model, RLVR-tuned models attend less to the image, assign a smaller share of gradient attribution to image tokens, and lose less accuracy when image embeddings are zeroed out.</li>
     </ol>
+    <div class="gr rv" id="ground" aria-label="Visual grounding: Base, GRPO and HiCCR-G"></div>
+    <p class="gr-cap">Base → GRPO → HiCCR-G on Qwen3-VL. Uniform credit erodes all three signals of visual grounding; HiCCR restores each beyond the base model. Values are read from Figure 1: attention is relative to GRPO (= 100), gradient share is the image fraction of Input×Gradient attribution, and the drop is measured on CLEVR-Count.</p>
   </div>
   <div class="wrap wide">
     <figure class="rv">
@@ -191,6 +193,39 @@
   <div class="wrap">
     <h2>Main Results</h2>
     <p>We train on ViRL39K and compare against nine RLVR algorithms reproduced under identical settings. Accuracy is averaged over eight runs (AVG@8) on nine reasoning benchmarks: five mathematical (Geometry3K, MathVerse, MathVista, WeMath, MathVerse-Vision) and four general/logical (MMK12, CLEVR-Count, LogicVista, MMMU).</p>
+  </div>
+  <div class="wrap wide">
+    <div class="fx rv" id="effect">
+      <div class="fx-main">
+        <div class="fx-head">
+          <div>
+            <p class="fx-k">Effect at a glance</p>
+            <p class="fx-t">Same recipe, only the credit changes</p>
+          </div>
+          <div class="seg" role="group" aria-label="Benchmark subset" id="fx-seg">
+            <button type="button" data-m="overall" aria-pressed="true">Overall</button>
+            <button type="button" data-m="math" aria-pressed="false">Math</button>
+            <button type="button" data-m="general" aria-pressed="false">General</button>
+          </div>
+        </div>
+        <div class="db" id="db"></div>
+        <p class="fx-leg"><span class="lg-o"></span>base algorithm &nbsp; <span class="lg-r"></span>+ HiCCR &nbsp;·&nbsp; AVG@8 (%), Table 1</p>
+      </div>
+      <div class="fx-side">
+        <div class="fx-box">
+          <p class="fx-k">Against larger models</p>
+          <div class="hb" id="lead"></div>
+          <p class="fx-note">AVG@8 (%) on the same nine benchmarks (Table 7).</p>
+        </div>
+        <div class="fx-box">
+          <p class="fx-k">Cost per training step · 8B</p>
+          <div class="hb" id="cost"></div>
+          <p class="fx-note">Peak memory +4.5%. No auxiliary model or extra data.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="wrap">
 
     <div class="tbl rv">
       <table>

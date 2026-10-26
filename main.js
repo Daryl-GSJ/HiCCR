@@ -72,6 +72,132 @@
     }, { once: true });
   }
 
+  /* ---------- effect visuals ---------- */
+  const onReveal = (el, fn) => {
+    if (!el) return;
+    if (el.classList.contains("in")) fn(); else el.addEventListener("revealed", fn, { once: true });
+  };
+  const tween = (el, from, to, dur, fmt) => {
+    if (reduce) { el.textContent = fmt(to); return; }
+    const t0 = performance.now();
+    const step = (now) => {
+      const p = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - p, 4);
+      el.textContent = fmt(from + (to - from) * e);
+      if (p < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  };
+  const sgn = (v) => (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(2);
+
+  // dumbbell: base algorithm -> + HiCCR (Table 1)
+  const db = $("#db");
+  if (db) {
+    const ROWS = [
+      { lab: "GRPO", sub: "Qwen3-VL-4B", b: [61.95, 64.17, 59.17], h: [69.94, 72.65, 66.55] },
+      { lab: "DAPO", sub: "Qwen3-VL-4B", b: [67.58, 71.40, 62.80], h: [68.95, 71.36, 65.93] },
+      { lab: "GRPO", sub: "Qwen3-VL-8B", b: [62.49, 64.24, 60.31], h: [67.19, 69.79, 63.94] },
+      { lab: "DAPO", sub: "Qwen3-VL-8B", b: [68.29, 70.95, 64.96], h: [72.76, 76.01, 68.69] },
+    ];
+    const MI = { overall: 0, math: 1, general: 2 }, LO = 56, HI = 78;
+    const x = (v) => ((v - LO) / (HI - LO)) * 100;
+    let grid = '<div class="db-grid">', ax = '<div class="db-ax">';
+    for (let v = 58; v <= 78; v += 4) { grid += `<i style="left:${x(v)}%"></i>`; ax += `<span style="left:${x(v)}%">${v}</span>`; }
+    db.innerHTML = grid + "</div>" + ROWS.map((r) => `
+      <div class="db-row">
+        <div class="db-lab">${r.lab}<span class="db-arr"> <span aria-hidden="true">→</span> +HiCCR</span><small>${r.sub}</small></div>
+        <div class="db-tr"><div class="db-ln"></div><div class="db-pt o"><span class="db-v"></span></div><div class="db-pt r"><span class="db-v"></span></div></div>
+        <div class="db-g">+0.00</div>
+      </div>`).join("") + ax + "</div>";
+    const rows = $$(".db-row", db);
+    const gains = rows.map(() => 0);
+    let shown = false;
+    const draw = (m, animate) => {
+      const k = MI[m];
+      rows.forEach((row, i) => {
+        const b = ROWS[i].b[k], h = shown ? ROWS[i].h[k] : b, g = h - b;
+        const [o, r] = $$(".db-pt", row);
+        o.style.transform = `translateX(${x(b)}%)`;
+        r.style.transform = `translateX(${x(h)}%)`;
+        $(".db-ln", row).style.transform = `translateX(${x(b)}%) scaleX(${(h - b) / (HI - LO)})`;
+        $(".db-v", o).textContent = b.toFixed(2);
+        $(".db-v", r).textContent = shown ? h.toFixed(2) : "";
+        const ge = $(".db-g", row);
+        ge.classList.toggle("neg", shown && g < 0);
+        if (animate) tween(ge, gains[i], g, 1100, sgn); else ge.textContent = sgn(g);
+        gains[i] = g;
+        // keep the two value labels from colliding
+        const close = shown && Math.abs(x(h) - x(b)) < 14;
+        const flip = h < b;
+        $(".db-v", o).classList.toggle("side-l", close && !flip);
+        $(".db-v", o).classList.toggle("side-r", close && flip);
+        $(".db-v", r).classList.toggle("side-r", close && !flip);
+        $(".db-v", r).classList.toggle("side-l", close && flip);
+      });
+    };
+    let mode = "overall";
+    rows.forEach((row) => $$(".db-ln, .db-pt", row).forEach((e) => { e.style.transition = "none"; }));
+    draw(mode, false);
+    void db.offsetWidth;
+    rows.forEach((row) => $$(".db-ln, .db-pt", row).forEach((e) => { e.style.transition = ""; }));
+    onReveal($("#effect"), () => setTimeout(() => { shown = true; draw(mode, true); }, reduce ? 0 : 450));
+    $$("#fx-seg button").forEach((btn) => btn.addEventListener("click", () => {
+      mode = btn.dataset.m;
+      $$("#fx-seg button").forEach((b) => b.setAttribute("aria-pressed", String(b === btn)));
+      draw(mode, shown);
+    }));
+  }
+
+  // horizontal bar groups
+  const bars = (el, data, max, fmt, delay0) => {
+    if (!el) return [];
+    el.innerHTML = data.map((d) => `
+      <div class="hb-row${d.ours ? " ours" : ""}">
+        <span>${d.ours ? "<b>" + d.n + "</b>" : d.n}</span>
+        <div class="hb-tr"><div class="hb-bar"></div></div>
+        <span class="hb-v">${fmt(d)}</span>
+      </div>`).join("");
+    return $$(".hb-bar", el).map((b, i) => () => {
+      b.style.transitionDelay = reduce ? "0s" : `${delay0 + i * 0.09}s`;
+      b.style.transform = `scaleX(${data[i].v / max})`;
+    });
+  };
+  const fire = (fns) => fns.forEach((f) => f());
+  const lead = bars($("#lead"), [
+    { n: "HiCCR-D · 8B", v: 72.76, ours: true },
+    { n: "Qwen2.5-VL-72B", v: 61.65 },
+    { n: "Gemini-2.0-flash", v: 61.40 },
+    { n: "GPT-4o", v: 60.95 },
+    { n: "InternVL2.5-78B", v: 55.26 },
+  ], 80, (d) => d.v.toFixed(2), 0.5);
+  const cost = bars($("#cost"), [
+    { n: "GRPO", v: 619, d: "" },
+    { n: "+ HiCCR", v: 636, ours: true, d: "+2.7%" },
+    { n: "+ PAPO", v: 782, d: "+26.3%" },
+  ], 800, (d) => `<em${d.ours ? ' class="up"' : ""}>${d.d}</em>${d.v} s`, 0.8);
+  if ($("#cost")) $("#cost").classList.add("hb-cost");
+  onReveal($("#effect"), () => { fire(lead); fire(cost); });
+
+  // grounding strip (Figure 1)
+  const gr = $("#ground");
+  if (gr) {
+    const COLS = [
+      { h: "Attention on image", s: "relative mass, GRPO = 100", max: 120, f: (v) => v.toFixed(1), v: [108.8, 100, 112.7], d: "HiCCR-G vs GRPO <b>+12.7%</b>" },
+      { h: "Gradient share of image", s: "Input×Gradient attribution", max: 30, f: (v) => v.toFixed(1) + "%", v: [25.0, 23.6, 26.6], d: "HiCCR-G vs GRPO <b>+3.0 pp</b>" },
+      { h: "Drop when image is zeroed", s: "CLEVR-Count; larger = more reliance", max: 80, f: (v) => v.toFixed(1) + "%", v: [68.8, 61.7, 69.8], d: "HiCCR-G vs GRPO <b>+8.0 pp</b>" },
+    ];
+    const NAMES = [["Base", "base"], ["GRPO", "rl"], ["HiCCR-G", "ours"]];
+    gr.innerHTML = COLS.map((c) => `
+      <div class="gr-col">
+        <p class="gr-h">${c.h}<small>${c.s}</small></p>
+        ${NAMES.map(([n, cls], i) => `<div class="gr-row ${cls}"><span>${n}</span><div class="hb-tr"><div class="hb-bar"></div></div><span class="gr-v">${c.f(c.v[i])}</span></div>`).join("")}
+        <p class="gr-d">${c.d}</p>
+      </div>`).join("");
+    onReveal(gr, () => $$(".gr-col", gr).forEach((col, j) => $$(".hb-bar", col).forEach((b, i) => {
+      b.style.transitionDelay = reduce ? "0s" : `${0.25 + j * 0.15 + i * 0.12}s`;
+      b.style.transform = `scaleX(${COLS[j].v[i] / COLS[j].max})`;
+    })));
+  }
+
   /* ---------- KaTeX ---------- */
   const renderMath = () => {
     if (!window.katex) return false;
