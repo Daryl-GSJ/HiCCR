@@ -336,6 +336,144 @@
     });
   }
 
+  /* ---------- method walkthrough ---------- */
+  const walk = $("#walk");
+  if (walk) {
+    const GX = 12, GY = 8, PS = 25, NV = GX * GY, LAM = 0.5, AHAT = 0.8;
+    // toy rollout: token, attention centre (x, y) on the 300x200 image, spread
+    const TOK = [["the", 150, 100, 95], ["hour", 128, 140, 34], ["hand", 132, 132, 30], ["points", 136, 126, 44], ["to", 150, 110, 75],
+                 ["the", 150, 105, 70], ["7", 116, 158, 19], [",", 150, 100, 130], ["so", 150, 100, 170], ["B", 145, 110, 52]];
+    const dist = ([, cx, cy, s]) => {
+      const p = [];
+      for (let y = 0; y < GY; y++) for (let x = 0; x < GX; x++) {
+        const dx = x * PS + PS / 2 - cx, dy = y * PS + PS / 2 - cy;
+        p.push(Math.exp(-(dx * dx + dy * dy) / (2 * s * s)));
+      }
+      const z = p.reduce((a, b) => a + b, 0);
+      return p.map((v) => v / z);
+    };
+    const P = TOK.map(dist);
+    const H = P.map((p) => -p.reduce((a, v) => a + (v > 0 ? v * Math.log(v) : 0), 0));
+    const LOGV = Math.log(NV);
+    const C = H.map((h) => 1 - h / LOGV);
+    const MU = C.reduce((a, b) => a + b, 0) / C.length;
+    const SD = Math.sqrt(C.reduce((a, b) => a + (b - MU) ** 2, 0) / C.length);
+    const Z = C.map((c) => (c - MU) / (SD + 1e-6));
+    const B = Z.map((z) => 1 + LAM / (1 + Math.exp(-z)));
+    const GROUP = [
+      { n: "Rollout 1 · this one", s: MU, ok: true },
+      { n: "Rollout 2", s: 0.118, ok: true },
+      { n: "Rollout 3", s: 0.091, ok: false },
+      { n: "Rollout 4", s: 0.163, ok: true },
+    ];
+    const smin = Math.min(...GROUP.map((g) => g.s)), smax = Math.max(...GROUP.map((g) => g.s));
+    GROUP.forEach((g) => { g.a = 1 + (g.s - smin) / (smax - smin + 1e-6); });
+    const ALPHA = GROUP[0].a;
+    const AT = B.map((b) => ALPHA * b * AHAT);
+
+    // static drawing
+    const ticks = $("#mw-ticks");
+    if (ticks) ticks.innerHTML = Array.from({ length: 12 }, (_, i) => {
+      const a = (i * 30 * Math.PI) / 180, r1 = i % 3 ? 74 : 70, r2 = 79;
+      return `<line x1="${150 + r1 * Math.sin(a)}" y1="${100 - r1 * Math.cos(a)}" x2="${150 + r2 * Math.sin(a)}" y2="${100 - r2 * Math.cos(a)}"/>`;
+    }).join("");
+    const grid = $("#mw-grid");
+    grid.innerHTML = "<i></i>".repeat(NV);
+    const cells = $$("i", grid);
+    const cols = $("#mw-cols");
+    cols.innerHTML = TOK.map(([t], i) => `<button type="button" class="mw-col" data-i="${i}"><span class="mw-val"></span><span class="mw-bar"></span><span class="mw-tok">${t}</span></button>`).join("");
+    const colEls = $$(".mw-col", cols);
+    const grp = $("#mw-group");
+    grp.innerHTML = `<p class="mw-gh">Group of rollouts for the same prompt · mean credit S̄ → α</p>` + GROUP.map((g, i) => `
+      <div class="mw-gr${i === 0 ? " me" : ""}${g.ok ? "" : " bad"}">
+        <span class="mw-gn">${g.n}</span>
+        <span class="mw-gs">S̄ ${g.s.toFixed(3)}</span>
+        <span class="hb-tr"><span class="hb-bar"></span></span>
+        <span class="mw-ga">${g.ok ? "α " + g.a.toFixed(2) : "Â &lt; 0 · kept"}</span>
+      </div>`).join("");
+    const notes = $$(".mw-note", walk), rail = $$("#mw-rail button"), read = $("#mw-read");
+    const ref = $("#mw-ref"), ylab = $("#mw-ylab");
+    const CH = 150; // bar area height in px
+
+    let step = 0, sel = 6;
+    const f3 = (v) => v.toFixed(3), f2 = (v) => v.toFixed(2);
+    const VIEW = [
+      { lab: "peak share max<sub>j</sub> p(j | t)", lo: 0, hi: 0.3, v: (i) => Math.max(...P[i]), fmt: (v) => (v * 100).toFixed(1) + "%", ref: 1 / NV, refl: "uniform 1/|<i class='mv'>V</i>|" },
+      { lab: "C<sub><i class='mv'>V</i></sub>(t)", lo: 0, hi: 0.6, v: (i) => C[i], fmt: f3, ref: MU, refl: "μ<sub>c</sub> " + f3(MU) },
+      { lab: "β<sub>t</sub>", lo: 1, hi: 1.5, v: (i) => B[i], fmt: f2, ref: 1 + LAM / 2, refl: "β at average credit · 1.25" },
+      { lab: "β<sub>t</sub>", lo: 1, hi: 1.5, v: (i) => B[i], fmt: f2, ref: 1 + LAM / 2, refl: "β at average credit · 1.25" },
+      { lab: "Ã<sub>t</sub> = α β<sub>t</sub> Â", lo: 0, hi: 2.2, v: (i) => AT[i], fmt: f2, ref: AHAT, refl: "uniform RLVR · Â = " + f2(AHAT) },
+    ];
+    const paintGrid = () => {
+      const p = P[sel], mx = Math.max(...p);
+      cells.forEach((c, j) => { c.style.opacity = step === 0 || step === 1 ? String(Math.pow(p[j] / mx, 0.9) * 0.82) : "0"; });
+    };
+    const paintBars = () => {
+      const V = VIEW[step], span = V.hi - V.lo;
+      colEls.forEach((el, i) => {
+        const v = V.v(i), k = Math.max(0.015, (v - V.lo) / span);
+        const bar = $(".mw-bar", el), val = $(".mw-val", el);
+        bar.style.transform = `scaleY(${k})`;
+        bar.style.background = step >= 2 ? colorOf(B[i]).bg : (i === sel ? "#5b6270" : "#c3c7cd");
+        val.style.transform = `translateY(${-k * CH}px)`;
+        val.textContent = V.fmt(v);
+        el.classList.toggle("on", i === sel);
+      });
+      ylab.innerHTML = V.lab;
+      if (V.ref !== undefined) {
+        ref.classList.add("show");
+        ref.style.transform = `translateY(${-((V.ref - V.lo) / span) * CH}px)`;
+        $("#mw-rl").innerHTML = V.refl;
+      }
+    };
+    const paintGroup = () => {
+      grp.classList.toggle("show", step >= 3);
+      $$(".hb-bar", grp).forEach((b, i) => { b.style.transform = `scaleX(${step >= 3 ? GROUP[i].a / 2 : 0})`; });
+    };
+    const paintRead = () => {
+      const t = `“<b>${TOK[sel][0]}</b>”`, p = P[sel], mx = Math.max(...p);
+      read.innerHTML = [
+        `${t}: the strongest patch holds <b>${(mx * 100).toFixed(1)}%</b> of its image attention (uniform would be ${(100 / NV).toFixed(1)}%).`,
+        `${t}: H = ${f2(H[sel])}, log|<i class='mv'>V</i>| = ${f2(LOGV)} → C<sub><i class='mv'>V</i></sub> = <b>${f3(C[sel])}</b>`,
+        `${t}: z = (${f3(C[sel])} − ${f3(MU)}) / ${f3(SD)} = ${f2(Z[sel])} → β<sub>t</sub> = 1 + 0.5·σ(z) = <b>${f3(B[sel])}</b>`,
+        `This rollout: S̄ = ${f3(MU)}, group min ${f3(smin)}, max ${f3(smax)} → α = <b>${f2(ALPHA)}</b>`,
+        `${t}: Ã<sub>t</sub> = ${f2(ALPHA)} × ${f3(B[sel])} × ${f2(AHAT)} = <b>${f2(AT[sel])}</b> &nbsp;(uniform: ${f2(AHAT)})`,
+      ][step];
+    };
+    const paint = () => {
+      walk.dataset.step = step;
+      rail.forEach((b, i) => { b.classList.toggle("on", i === step); b.classList.toggle("done", i < step); });
+      notes.forEach((n, i) => n.classList.toggle("on", i === step));
+      paintGrid(); paintBars(); paintGroup(); paintRead();
+    };
+
+    // autoplay, once per reveal or replay; stops on any manual choice
+    const STEP_MS = 3400;
+    let timer = null;
+    const stop = () => { clearTimeout(timer); timer = null; walk.classList.remove("playing"); };
+    const play = () => {
+      stop(); step = 0; sel = 6; paint();
+      if (reduce) return;
+      walk.classList.add("playing");
+      const next = () => {
+        if (step >= 4) { stop(); return; }
+        step++; paint();
+        timer = setTimeout(next, STEP_MS);
+      };
+      timer = setTimeout(next, STEP_MS);
+    };
+    rail.forEach((b) => b.addEventListener("click", () => { stop(); step = +b.dataset.s; paint(); }));
+    colEls.forEach((el) => {
+      const pick = () => { sel = +el.dataset.i; paint(); };
+      el.addEventListener("mouseenter", pick);
+      el.addEventListener("focus", pick);
+      el.addEventListener("click", pick);
+    });
+    $("#mw-play").addEventListener("click", play);
+    paint();
+    onReveal(walk, () => setTimeout(play, reduce ? 0 : 400));
+  }
+
   /* ---------- more cases ---------- */
   const cbtns = $$(".cases-nav button"), cfigs = $$(".case-stage figure");
   cbtns.forEach((b) => b.addEventListener("click", () => {

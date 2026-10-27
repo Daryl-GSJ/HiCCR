@@ -166,7 +166,7 @@
 <section id="method">
   <div class="wrap">
     <h2>Method</h2>
-    <p>HiCCR derives every weight from a single quantity, the <b>context credit</b> C<sub>V</sub>(t): one minus the normalized entropy of token t's attention restricted to the visual positions 𝒱, averaged over heads of the last two layers. A token that locks onto a few image regions scores high; a token whose visual attention is diffuse scores low.</p>
+    <p>HiCCR derives every weight from a single quantity, the <b>context credit</b> C<sub>V</sub>(t): one minus the normalized entropy of token t's attention restricted to the visual positions <i class="mv">V</i>, averaged over heads of the last two layers. A token that locks onto a few image regions scores high; a token whose visual attention is diffuse scores low.</p>
     <div class="eq" data-tex="C_V(t)=1-\frac{H\!\left(p_V(\cdot\mid t)\right)}{\log|\mathcal V|}\in[0,1]"></div>
 
     <div class="cols rv">
@@ -185,6 +185,58 @@
     <p>The two weights are applied <b>asymmetrically</b>: only positive advantages are reshaped, so that incorrect rollouts are not penalized merely for attending to the image.</p>
     <div class="eq" data-tex="\tilde A^{(i)}_t=\begin{cases}\alpha^{(i)}\,\beta^{(i)}_t\,\hat A^{(i)}, & \hat A^{(i)}>0\\ \hat A^{(i)}, & \text{otherwise}\end{cases}"></div>
     <p class="muted">HiCCR is a drop-in change to the advantage. We denote it HiCCR-G on GRPO and HiCCR-D on DAPO. Defaults: λ<sub>tok</sub> = 0.5, τ = 0.5. The score reuses queries and keys from the forward pass, so no extra backward pass is required.</p>
+  </div>
+  <div class="wrap wide">
+    <div class="mw rv" id="walk">
+      <div class="mw-top">
+        <div>
+          <p class="fx-k">Step by step</p>
+          <p class="fx-t">How one correct rollout receives its credit</p>
+        </div>
+        <button type="button" class="replay" id="mw-play"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg><span>Replay</span></button>
+      </div>
+      <ol class="mw-rail" id="mw-rail">
+        <li><button type="button" data-s="0"><span>1</span><em>Attend within the image</em><i></i></button></li>
+        <li><button type="button" data-s="1"><span>2</span><em>Measure concentration</em><i></i></button></li>
+        <li><button type="button" data-s="2"><span>3</span><em>Token weight β<sub>t</sub></em><i></i></button></li>
+        <li><button type="button" data-s="3"><span>4</span><em>Trajectory weight α</em><i></i></button></li>
+        <li><button type="button" data-s="4"><span>5</span><em>Reassign advantage</em><i></i></button></li>
+      </ol>
+      <div class="mw-body">
+        <div class="mw-img">
+          <div class="mw-pic">
+            <svg viewBox="0 0 300 200" aria-hidden="true">
+              <rect width="300" height="200" fill="#f6f1e8"/>
+              <circle cx="150" cy="100" r="82" fill="#fff" stroke="#c9c2b4" stroke-width="2"/>
+              <g id="mw-ticks" stroke="#3a3a3a" stroke-width="2" stroke-linecap="round"></g>
+              <g font-family="Source Serif 4, Georgia, serif" font-size="15" fill="#2a2a2a" text-anchor="middle" dominant-baseline="central"><text x="150" y="36">12</text><text x="117.5" y="156">7</text><text x="214" y="100">3</text><text x="86" y="100">9</text></g>
+              <line x1="150" y1="100" x2="127.5" y2="139" stroke="#1b1f27" stroke-width="5" stroke-linecap="round"/>
+              <line x1="150" y1="100" x2="150" y2="44" stroke="#1b1f27" stroke-width="3" stroke-linecap="round"/>
+              <circle cx="150" cy="100" r="4" fill="#1b1f27"/>
+            </svg>
+            <div class="mw-grid" id="mw-grid" aria-hidden="true"></div>
+          </div>
+          <p class="mw-cap">Image tokens <i class="mv">V</i> · 12 × 8 patches. Shading shows p<sub><i class="mv">V</i></sub>(j | t) for the selected token.</p>
+        </div>
+        <div class="mw-plot">
+          <div class="mw-chart" id="mw-chart">
+            <p class="mw-ylab"><span id="mw-ylab"></span><span class="mw-rk"><s></s><span id="mw-rl"></span></span></p>
+            <div class="mw-ref" id="mw-ref"></div>
+            <div class="mw-cols" id="mw-cols"></div>
+          </div>
+          <div class="mw-group" id="mw-group"></div>
+        </div>
+        <div class="mw-notes">
+          <div class="mw-note"><p class="mw-h">Restrict attention to image tokens</p><p>For each generated token t, the softmax over query–key energies is taken over visual positions only, so the result is a distribution over image patches.</p><div class="eq sm" data-tex="p_{\mathcal V}(j\mid t)=\frac{\exp(e_{t,j}/\tau)}{\sum_{j'\in\mathcal V}\exp(e_{t,j'}/\tau)}"></div></div>
+          <div class="mw-note"><p class="mw-h">Score concentration, not magnitude</p><p>One minus the normalized entropy. A token that locks onto a few patches scores high; diffuse attention scores near zero.</p><div class="eq sm" data-tex="C_{\mathcal V}(t)=1-\frac{H(p_{\mathcal V}(\cdot\mid t))}{\log|\mathcal V|}"></div></div>
+          <div class="mw-note"><p class="mw-h">Token Credit Reassignment</p><p>Scores are standardized within the sequence and squashed by a sigmoid. Every weight stays above 1, so no token is suppressed.</p><div class="eq sm" data-tex="\beta_t=1+\lambda_{\text{tok}}\,\sigma\!\left(\tfrac{C_{\mathcal V}(t)-\mu_c}{\sigma_c+\epsilon}\right)"></div></div>
+          <div class="mw-note"><p class="mw-h">Trajectory Advantage Reweighting</p><p>Each rollout's mean credit is min–max normalized within the group, so rollouts that engage the image more are reinforced more.</p><div class="eq sm" data-tex="\alpha^{(i)}=1+\frac{\bar S^{(i)}-\min_k\bar S^{(k)}}{\max_k\bar S^{(k)}-\min_k\bar S^{(k)}+\epsilon}"></div></div>
+          <div class="mw-note"><p class="mw-h">Reshape positive advantages only</p><p>Correct rollouts get α·β<sub>t</sub>·Â; incorrect ones keep their uniform negative advantage.</p><div class="eq sm" data-tex="\tilde A_t=\alpha\,\beta_t\,\hat A\quad(\hat A>0)"></div></div>
+          <p class="mw-read" id="mw-read" aria-live="polite"></p>
+        </div>
+      </div>
+      <p class="mw-foot">Illustrative numbers for a toy rollout (|<i class="mv">V</i>| = 96, λ<sub>tok</sub> = 0.5, Â = +0.80); the pipeline is exactly Eqs. (5)–(10). Hover or tap a token to inspect it.</p>
+    </div>
   </div>
 </section>
 
@@ -282,7 +334,7 @@
           <tr><td class="l">Time-decay</td><td class="l muted">w<sub>t</sub> = γ<sup>T−t</sup></td><td>63.04</td><td>64.00</td><td>63.02</td><td>68.51</td></tr>
           <tr><td class="l">Entropy mask</td><td class="l muted">Top-20% high-entropy tokens</td><td>63.50</td><td>66.67</td><td>63.74</td><td>70.28</td></tr>
           <tr><td class="l">HiCCR-T</td><td class="l muted">Same formula over text context</td><td>61.50</td><td>67.19</td><td>64.62</td><td>69.18</td></tr>
-          <tr><td class="l">Raw energy</td><td class="l muted">logsumexp over 𝒱, unnormalized</td><td>66.61</td><td>68.67</td><td>65.50</td><td>72.08</td></tr>
+          <tr><td class="l">Raw energy</td><td class="l muted">logsumexp over <i class="mv">V</i>, unnormalized</td><td>66.61</td><td>68.67</td><td>65.50</td><td>72.08</td></tr>
           <tr class="ours"><td class="l"><b>HiCCR</b></td><td class="l">Intra-visual concentration</td><td><b>69.94</b></td><td><b>68.95</b></td><td><b>67.19</b></td><td><b>72.76</b></td></tr>
         </tbody>
       </table>
